@@ -1,0 +1,29 @@
+# 프로덕션 환경 설정 예시
+# 이 파일을 terraform.tfvars로 복사하여 사용하세요
+
+aws_region = "ap-northeast-2"
+project_name = "aws-security-automation"
+environment = "prod"
+
+# VPC 설정
+vpc_cidr = "10.0.0.0/16"
+availability_zones = ["ap-northeast-2a", "ap-northeast-2c"]
+
+# 알림 설정
+# slack_webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+# notification_email = "security-team@example.com"
+
+# 보안 설정
+allowed_cidr_blocks = ["1.2.3.4/32"]  # 관리자 IP
+enable_guardduty = true
+enable_security_hub = true
+enable_config = true
+
+# 공통 태그
+tags = {
+  Project     = "aws-security-automation"
+  ManagedBy   = "Terraform"
+  Environment = "prod"
+  Owner       = "Security-Team"
+}
+
