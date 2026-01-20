@@ -215,6 +215,40 @@ def send_slack_notification(finding: Dict[str, Any], blocked_ips: List[str]) -> 
         print(f"Error sending Slack notification: {str(e)}")
 
 
+def send_sns_notification(finding: Dict[str, Any], blocked_ips: List[str]) -> None:
+    """SNS로 차단 알림 전송"""
+    if not SNS_TOPIC_ARN:
+        return
+
+    severity = finding.get('severity', 'N/A')
+    title = finding.get('title', 'Unknown Threat')
+    finding_type = finding.get('type', 'Unknown')
+    account_id = finding.get('accountId', 'N/A')
+    region = finding.get('region', 'N/A')
+
+    message = {
+        "message": "GuardDuty 위협 탐지 및 자동 차단",
+        "finding": {
+            "type": finding_type,
+            "severity": severity,
+            "title": title,
+            "accountId": account_id,
+            "region": region,
+            "id": finding.get("id", ""),
+        },
+        "blocked_ips": blocked_ips,
+    }
+
+    try:
+        sns.publish(
+            TopicArn=SNS_TOPIC_ARN,
+            Subject=f"[GuardDuty] Auto Blocked IPs ({severity})",
+            Message=json.dumps(message, ensure_ascii=False),
+        )
+    except Exception as e:
+        print(f"Error sending SNS notification: {str(e)}")
+
+
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Lambda 함수 핸들러
