@@ -28,9 +28,9 @@ def parse_waf_arn(arn: str) -> Dict[str, str]:
     scope_part = parts[0].split(':')[-1]  # 'regional' or 'cloudfront'
     ip_set_id = parts[-1]
     ip_set_name = parts[-2]
-    
+
     scope = 'REGIONAL' if scope_part == 'regional' else 'CLOUDFRONT'
-    
+
     return {
         'scope': scope,
         'id': ip_set_id,
@@ -41,18 +41,18 @@ def parse_waf_arn(arn: str) -> Dict[str, str]:
 def extract_ip_from_finding(finding: Dict[str, Any]) -> List[str]:
     """
     GuardDuty Finding에서 공격자 IP 주소 추출
-    
+
     Args:
         finding: GuardDuty Finding JSON 객체
-        
+
     Returns:
         추출된 IP 주소 리스트
     """
     ips = []
-    
+
     # Resource 필드에서 IP 추출
     resource = finding.get('resource', {})
-    
+
     # Instance Details에서 IP 추출
     if 'instanceDetails' in resource:
         instance_details = resource['instanceDetails']
@@ -64,7 +64,7 @@ def extract_ip_from_finding(finding: Dict[str, Any]) -> List[str]:
                             ips.append(private_ip['privateIpAddress'])
                 if 'publicIp' in interface:
                     ips.append(interface['publicIp'])
-    
+
     # Service 필드에서 IP 추출 (Remote IP)
     service = finding.get('service', {})
     if 'action' in service:
@@ -75,7 +75,7 @@ def extract_ip_from_finding(finding: Dict[str, Any]) -> List[str]:
                 remote_ip = network_action['remoteIpDetails']
                 if 'ipAddressV4' in remote_ip:
                     ips.append(remote_ip['ipAddressV4'])
-        
+
         # DNS Action에서 IP 추출
         if 'dnsRequestAction' in action:
             dns_action = action['dnsRequestAction']
@@ -83,43 +83,43 @@ def extract_ip_from_finding(finding: Dict[str, Any]) -> List[str]:
                 remote_ip = dns_action['remoteIpDetails']
                 if 'ipAddressV4' in remote_ip:
                     ips.append(remote_ip['ipAddressV4'])
-    
+
     # 중복 제거 및 None 값 제거
     ips = list(set([ip for ip in ips if ip and ip.strip()]))
-    
+
     return ips
 
 
 def get_current_ip_set() -> Dict[str, Any]:
     """현재 WAF IP Set 조회"""
     waf_info = parse_waf_arn(WAF_IP_SET_ARN)
-    
+
     response = wafv2.get_ip_set(
         Scope=waf_info['scope'],
         Id=waf_info['id'],
         Name=waf_info['name']
     )
-    
+
     return response
 
 
 def update_ip_set(new_ips: List[str]) -> bool:
     """
     WAF IP Set에 새 IP 주소 추가
-    
+
     Args:
         new_ips: 추가할 IP 주소 리스트
-        
+
     Returns:
         성공 여부
     """
     try:
         waf_info = parse_waf_arn(WAF_IP_SET_ARN)
-        
+
         # 현재 IP Set 조회
         current_set = get_current_ip_set()
         current_addresses = set(current_set['IPSet']['Addresses'])
-        
+
         # 새 IP 추가 (CIDR 형식 변환)
         updated_addresses = current_addresses.copy()
         for ip in new_ips:
@@ -127,7 +127,7 @@ def update_ip_set(new_ips: List[str]) -> bool:
             if '/' not in ip:
                 ip = f"{ip}/32"
             updated_addresses.add(ip)
-        
+
         # IP Set 업데이트
         wafv2.update_ip_set(
             Scope=waf_info['scope'],
@@ -137,7 +137,7 @@ def update_ip_set(new_ips: List[str]) -> bool:
             Addresses=list(updated_addresses),
             LockToken=current_set['LockToken']
         )
-        
+
         return True
     except Exception as e:
         print(f"Error updating IP set: {str(e)}")
@@ -148,21 +148,21 @@ def send_slack_notification(finding: Dict[str, Any], blocked_ips: List[str]) -> 
     """Slack으로 차단 알림 전송"""
     if not SLACK_WEBHOOK_URL:
         return
-    
+
     severity = finding.get('severity', 'N/A')
     title = finding.get('title', 'Unknown Threat')
     finding_type = finding.get('type', 'Unknown')
     account_id = finding.get('accountId', 'N/A')
     region = finding.get('region', 'N/A')
-    
+
     message = {
-        "text": "🚨 GuardDuty 위협 탐지 및 자동 차단",
+        "text": "GuardDuty 위협 탐지 및 자동 차단",
         "blocks": [
             {
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": "🚨 GuardDuty 위협 탐지 및 자동 차단"
+                    "text": "GuardDuty 위협 탐지 및 자동 차단"
                 }
             },
             {
@@ -202,7 +202,7 @@ def send_slack_notification(finding: Dict[str, Any], blocked_ips: List[str]) -> 
             }
         ]
     }
-    
+
     try:
         response = http.request(
             'POST',
@@ -218,37 +218,37 @@ def send_slack_notification(finding: Dict[str, Any], blocked_ips: List[str]) -> 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Lambda 함수 핸들러
-    
+
     EventBridge에서 GuardDuty Finding을 수신하여 IP 차단 처리
     """
     print(f"Received event: {json.dumps(event)}")
-    
+
     try:
         # EventBridge 이벤트 형식에서 GuardDuty Finding 추출
         detail = event.get('detail', {})
-        
+
         # GuardDuty Finding에서 IP 추출
         blocked_ips = extract_ip_from_finding(detail)
-        
+
         if not blocked_ips:
             print("No IP addresses found in the finding")
             return {
                 'statusCode': 200,
                 'body': json.dumps('No IP addresses to block')
             }
-        
+
         print(f"Extracted IPs to block: {blocked_ips}")
-        
+
         # WAF IP Set 업데이트
         success = update_ip_set(blocked_ips)
-        
+
         if success:
             print(f"Successfully blocked IPs: {blocked_ips}")
-            
+
             # 알림 전송 (SNS 및 Slack)
             send_sns_notification(detail, blocked_ips)
             send_slack_notification(detail, blocked_ips)
-            
+
             return {
                 'statusCode': 200,
                 'body': json.dumps({
@@ -261,7 +261,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'statusCode': 500,
                 'body': json.dumps('Failed to update IP set')
             }
-            
+
     except Exception as e:
         print(f"Error processing event: {str(e)}")
         return {

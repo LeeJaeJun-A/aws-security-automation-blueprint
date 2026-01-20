@@ -14,11 +14,15 @@ terraform {
   }
 
   # 프로덕션 환경별 State 관리
+  # Bootstrap을 먼저 생성한 후 (make bootstrap-apply) 아래 주석을 해제하고 설정하세요
+  # Bootstrap 출력값 확인: cd ../bootstrap/terraform && terraform output
+  #
   # backend "s3" {
-  #   bucket = "your-terraform-state-bucket"
-  #   key    = "prod/aws-security-automation/terraform.tfstate"
-  #   region = "ap-northeast-2"
-  #   encrypt = true
+  #   bucket         = "your-terraform-state-bucket-name"  # bootstrap output의 state_bucket_name 사용
+  #   key            = "prod/aws-security-automation/terraform.tfstate"
+  #   region         = "ap-northeast-2"
+  #   dynamodb_table = "terraform-state-lock"              # bootstrap output의 dynamodb_table_name 사용
+  #   encrypt        = true
   # }
 }
 
