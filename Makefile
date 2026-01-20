@@ -5,10 +5,10 @@ bootstrap-init:
 	cd environments/prod/bootstrap/terraform && terraform init
 
 bootstrap-plan:
-	cd environments/prod/bootstrap/terraform && terraform plan -var-file=terraform.tfvars
+	cd environments/prod/bootstrap/terraform && terraform plan -var-file=../../config/terraform.tfvars
 
 bootstrap-apply:
-	cd environments/prod/bootstrap/terraform && terraform apply -var-file=terraform.tfvars
+	cd environments/prod/bootstrap/terraform && terraform apply -var-file=../../config/terraform.tfvars
 
 bootstrap-output:
 	cd environments/prod/bootstrap/terraform && terraform output

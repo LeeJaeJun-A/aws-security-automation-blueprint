@@ -34,16 +34,18 @@ aws sts get-caller-identity
 ### 2. 설정 파일 준비
 
 ```bash
-cd environments/prod/bootstrap/terraform
+cd environments/prod/config
 cp terraform.tfvars.example terraform.tfvars
 ```
 
-`terraform.tfvars` 파일을 수정하여 다음 항목을 설정하세요:
+`environments/prod/config/terraform.tfvars` 파일을 수정하여 다음 항목을 설정하세요:
 
 - `state_bucket_name`: S3 버킷 이름 (전역적으로 고유해야 함)
   - 예: `your-company-aws-security-automation-terraform-state-prod-<계정ID>`
 - `aws_region`: AWS 리전 (기본값: `ap-northeast-2`)
 - `environment`: 환경 이름 (기본값: `prod`)
+
+**참고**: Bootstrap과 Main Terraform 모두 `environments/prod/config/terraform.tfvars` 파일을 공유합니다.
 
 ### 3. Bootstrap 리소스 생성
 
@@ -66,10 +68,10 @@ cd environments/prod/bootstrap/terraform
 terraform init
 
 # 생성 계획 확인
-terraform plan -var-file=terraform.tfvars
+terraform plan -var-file=../../config/terraform.tfvars
 
 # 리소스 생성
-terraform apply -var-file=terraform.tfvars
+terraform apply -var-file=../../config/terraform.tfvars
 ```
 
 ### 4. Backend 설정 활성화

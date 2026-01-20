@@ -1,9 +1,42 @@
 # 프로덕션 환경 설정 예시
 # 이 파일을 terraform.tfvars로 복사하여 사용하세요
+# Bootstrap과 Main Terraform 모두 이 파일을 공유합니다.
 
+# ============================================================================
+# 공통 설정
+# ============================================================================
 aws_region = "ap-northeast-2"
-project_name = "aws-security-automation"
 environment = "prod"
+
+# 공통 태그
+tags = {
+  Project     = "aws-security-automation"
+  ManagedBy   = "Terraform"
+  Environment = "prod"
+  Owner       = "Security-Team"
+}
+
+# ============================================================================
+# Bootstrap 전용 설정 (S3/DynamoDB State 관리)
+# ============================================================================
+# S3 버킷 이름 (전역적으로 고유해야 함)
+# 예: <회사명>-<프로젝트명>-terraform-state-<환경>
+state_bucket_name = "your-company-aws-security-automation-terraform-state-prod"
+
+# DynamoDB 테이블 이름 (선택사항, 기본값 사용 가능)
+# dynamodb_table_name = "terraform-state-lock-prod"
+
+# State 버전 관리 설정 (선택사항)
+# enable_state_lifecycle = true
+# state_version_expiration_days = 90
+
+# DynamoDB Point-in-Time Recovery (선택사항)
+# enable_dynamodb_point_in_time_recovery = true
+
+# ============================================================================
+# Main Terraform 전용 설정 (인프라 배포)
+# ============================================================================
+project_name = "aws-security-automation"
 
 # VPC 설정
 vpc_cidr = "10.0.0.0/16"
@@ -18,12 +51,4 @@ allowed_cidr_blocks = ["1.2.3.4/32"]  # 관리자 IP
 enable_guardduty = true
 enable_security_hub = true
 enable_config = true
-
-# 공통 태그
-tags = {
-  Project     = "aws-security-automation"
-  ManagedBy   = "Terraform"
-  Environment = "prod"
-  Owner       = "Security-Team"
-}
 
