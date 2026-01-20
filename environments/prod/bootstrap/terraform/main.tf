@@ -77,46 +77,46 @@ resource "aws_s3_bucket_public_access_block" "terraform_state" {
   restrict_public_buckets = true
 }
 
-# S3 버킷 정책: Terraform State 접근 제어
-resource "aws_s3_bucket_policy" "terraform_state" {
-  bucket = aws_s3_bucket.terraform_state.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "DenyInsecureConnections"
-        Effect    = "Deny"
-        Principal = "*"
-        Action    = "s3:*"
-        Resource = [
-          aws_s3_bucket.terraform_state.arn,
-          "${aws_s3_bucket.terraform_state.arn}/*"
-        ]
-        Condition = {
-          Bool = {
-            "aws:SecureTransport" = "false"
-          }
-        }
-      },
-      {
-        Sid       = "EnforceTLS"
-        Effect    = "Deny"
-        Principal = "*"
-        Action    = "s3:*"
-        Resource = [
-          aws_s3_bucket.terraform_state.arn,
-          "${aws_s3_bucket.terraform_state.arn}/*"
-        ]
-        Condition = {
-          StringNotEquals = {
-            "s3:TlsVersion" = "TLSv1.2"
-          }
-        }
-      }
-    ]
-  })
-}
+# S3 버킷 정책: Terraform State 접근 제어 (선택사항)
+# 주의: 버킷 정책의 Deny 규칙이 IAM 권한보다 우선하므로,
+# admin 계정에서도 접근이 차단될 수 있습니다.
+# 필요시 나중에 수동으로 추가하거나, IAM 정책으로만 관리하는 것을 권장합니다.
+# resource "aws_s3_bucket_policy" "terraform_state" {
+#   bucket = aws_s3_bucket.terraform_state.id
+#
+#   policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [
+#       {
+#         Sid    = "AllowAccountAccess"
+#         Effect = "Allow"
+#         Principal = {
+#           AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+#         }
+#         Action = "s3:*"
+#         Resource = [
+#           aws_s3_bucket.terraform_state.arn,
+#           "${aws_s3_bucket.terraform_state.arn}/*"
+#         ]
+#       },
+#       {
+#         Sid       = "DenyInsecureConnections"
+#         Effect    = "Deny"
+#         Principal = "*"
+#         Action    = "s3:*"
+#         Resource = [
+#           aws_s3_bucket.terraform_state.arn,
+#           "${aws_s3_bucket.terraform_state.arn}/*"
+#         ]
+#         Condition = {
+#           Bool = {
+#             "aws:SecureTransport" = "false"
+#           }
+#         }
+#       }
+#     ]
+#   })
+# }
 
 # S3 버킷 수명 주기 정책 (선택적, State 버전 관리용)
 resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
