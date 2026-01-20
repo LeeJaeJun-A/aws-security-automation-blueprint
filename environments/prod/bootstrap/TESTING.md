@@ -62,6 +62,8 @@ cp terraform.tfvars.example terraform.tfvars
 
 ### 방법 1: Makefile 사용 (권장)
 
+프로젝트 루트 디렉토리에서 실행:
+
 ```bash
 # 1. Bootstrap 초기화
 make bootstrap-init
@@ -71,6 +73,9 @@ make bootstrap-plan
 
 # 3. 실제 리소스 생성
 make bootstrap-apply
+
+# 4. 출력값 확인 (Backend 설정에 필요)
+make bootstrap-output
 ```
 
 ### 방법 2: 직접 Terraform 명령어 사용
@@ -78,9 +83,9 @@ make bootstrap-apply
 ```bash
 cd environments/prod/bootstrap/terraform
 
-# 1. 설정 파일 준비 (이미 완료했다면 생략)
+# 1. 설정 파일 준비
 cp terraform.tfvars.example terraform.tfvars
-# terraform.tfvars 파일 수정
+# terraform.tfvars 파일 수정 (state_bucket_name 필수!)
 
 # 2. Terraform 초기화
 terraform init
@@ -90,6 +95,9 @@ terraform plan -var-file=terraform.tfvars
 
 # 4. 실제 리소스 생성
 terraform apply -var-file=terraform.tfvars
+
+# 5. 출력값 확인
+terraform output
 ```
 
 ## 예상 결과
@@ -113,13 +121,21 @@ terraform apply -var-file=terraform.tfvars
 다음 출력값들을 확인할 수 있습니다:
 
 ```bash
+# Makefile 사용
 make bootstrap-output
+
+# 또는 직접 실행
+cd environments/prod/bootstrap/terraform
+terraform output
 ```
 
 예상 출력:
-- `state_bucket_name`: 생성된 S3 버킷 이름
-- `dynamodb_table_name`: 생성된 DynamoDB 테이블 이름
-- `backend_config`: Backend 설정에 필요한 모든 값
+- `state_bucket_name`: 생성된 S3 버킷 이름 (Backend 설정에 사용)
+- `state_bucket_arn`: 생성된 S3 버킷 ARN
+- `dynamodb_table_name`: 생성된 DynamoDB 테이블 이름 (Backend 설정에 사용)
+- `dynamodb_table_arn`: 생성된 DynamoDB 테이블 ARN
+- `backend_config`: Backend 설정에 필요한 모든 값들 (객체)
+- `backend_config_example`: Backend 설정 예제 코드 (문자열)
 
 ## 주의사항
 
@@ -147,11 +163,36 @@ S3 버킷 이름 규칙을 확인하세요:
 - 소문자, 숫자, 하이픈(-)만 사용 가능
 - 3-63자 사이
 - IP 주소 형식 불가
+- 점(.)으로 시작하거나 끝날 수 없음
 
 ## 테스트 완료 후
 
 Bootstrap이 성공적으로 생성되면:
 
-1. `terraform output`으로 생성된 리소스 확인
-2. `../terraform/main.tf`에서 backend 설정 활성화
-3. 실제 인프라 배포 진행
+1. **출력값 확인**:
+   ```bash
+   make bootstrap-output
+   # 또는
+   cd environments/prod/bootstrap/terraform
+   terraform output
+   ```
+
+2. **Backend 설정 활성화**:
+   - `environments/prod/terraform/main.tf` 파일 열기
+   - backend 설정 주석 해제
+   - 출력값 입력 (state_bucket_name, dynamodb_table_name)
+
+3. **State 마이그레이션**:
+   ```bash
+   cd environments/prod/terraform
+   terraform init -migrate-state
+   ```
+
+4. **실제 인프라 배포 진행**:
+   - `environments/prod/config/terraform.tfvars` 설정
+   - `make plan` 및 `make apply` 실행
+
+## 추가 리소스
+
+- Bootstrap 가이드: [README.md](./README.md)
+- 프로젝트 전체 가이드: [../../../../README.md](../../../../README.md)

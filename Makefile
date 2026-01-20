@@ -45,12 +45,12 @@ clean:
 	find . -type f -name ".terraform.lock.hcl" -delete
 	find . -type f -name "*.zip" -path "*/lambda_zip/*" -delete
 
-# 문서 생성 (예시)
+# 문서 목록
 docs:
 	@echo "프로젝트 문서:"
-	@echo "  - README.md: 프로젝트 개요"
-	@echo "  - docs/architecture/README.md: 아키텍처 문서"
-	@echo "  - docs/runbooks/OPERATIONS.md: 운영 매뉴얼"
+	@echo "  - README.md: 프로젝트 개요 및 사용법"
+	@echo "  - environments/prod/bootstrap/README.md: Bootstrap 가이드"
+	@echo "  - environments/prod/bootstrap/TESTING.md: Bootstrap 테스트 가이드"
 
 help:
 	@echo "사용 가능한 명령어:"
