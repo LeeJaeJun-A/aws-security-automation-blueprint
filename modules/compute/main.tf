@@ -193,13 +193,13 @@ resource "aws_iam_instance_profile" "ec2" {
   tags = var.tags
 }
 
-# EC2 인스턴스
+# EC2 인스턴스 (각 Private Subnet에 하나씩 생성)
 resource "aws_instance" "main" {
-  count = var.enable_ec2 ? 1 : 0
+  count = var.enable_ec2 ? length(var.private_subnet_ids) : 0
 
   ami                    = var.ec2_ami_id != "" ? var.ec2_ami_id : data.aws_ami.amazon_linux[0].id
   instance_type          = var.ec2_instance_type
-  subnet_id              = var.private_subnet_ids[0]
+  subnet_id              = var.private_subnet_ids[count.index]
   vpc_security_group_ids = [var.ec2_security_group_id]
   iam_instance_profile   = aws_iam_instance_profile.ec2[0].name
   key_name               = var.ec2_key_name != "" ? var.ec2_key_name : null
@@ -210,22 +210,22 @@ resource "aws_instance" "main" {
     yum install -y httpd
     systemctl start httpd
     systemctl enable httpd
-    echo "<h1>Welcome to AWS Security Automation Blueprint</h1>" > /var/www/html/index.html
+    echo "<h1>Welcome to AWS Security Automation Blueprint - Instance ${count.index + 1}</h1>" > /var/www/html/index.html
   EOF
 
   tags = merge(
     var.tags,
     {
-      Name = "${var.project_name}-ec2"
+      Name = "${var.project_name}-ec2-${count.index + 1}"
     }
   )
 }
 
-# ALB Target Group Attachment
+# ALB Target Group Attachment (모든 EC2 인스턴스 등록)
 resource "aws_lb_target_group_attachment" "ec2" {
-  count            = var.enable_ec2 ? 1 : 0
+  count            = var.enable_ec2 ? length(aws_instance.main) : 0
   target_group_arn = aws_lb_target_group.main.arn
-  target_id        = aws_instance.main[0].id
+  target_id        = aws_instance.main[count.index].id
   port             = 80
 }
 

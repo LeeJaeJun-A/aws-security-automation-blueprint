@@ -357,6 +357,66 @@ Slack 알림
 - S3 버킷 이름은 전역적으로 고유해야 합니다
 - Bootstrap 생성 후 반드시 Backend 설정을 활성화하여 State를 안전하게 관리하세요
 
+## 아키텍처
+
+### 아키텍처 다이어그램
+
+프로젝트의 전체 아키텍처 다이어그램은 `architecture.drawio` 파일에 포함되어 있습니다.
+
+**다이어그램 보기**:
+- [draw.io](https://app.diagrams.net/) 또는 [VS Code Draw.io Extension](https://marketplace.visualstudio.com/items?itemName=hediet.vscode-drawio)으로 열기
+- 파일: `architecture.drawio`
+
+**중요**: draw.io에서 파일을 열 때 AWS 아이콘 라이브러리가 자동으로 로드됩니다. 만약 아이콘이 표시되지 않으면:
+1. draw.io에서 "More Shapes" 클릭
+2. "AWS" 검색 및 선택
+3. AWS 아이콘 라이브러리 활성화
+
+다이어그램에는 다음이 포함됩니다:
+- 네트워크 아키텍처 (VPC, Subnets, Internet Gateway, NAT Gateway)
+- 보안 계층 (WAF, Security Groups, GuardDuty, Config, Security Hub)
+- 컴퓨팅 리소스 (CloudFront, ALB, EC2)
+- 자동화 파이프라인 (EventBridge, Lambda, WAF IP Set)
+- 알림 시스템 (SNS, Slack, CloudWatch)
+
+### 자동화 플로우
+
+```
+GuardDuty Finding (Severity >= Medium)
+    ↓
+EventBridge Rule
+    ↓
+Lambda Function (IP Blocker)
+    ↓
+WAF IP Set 업데이트 (자동 차단)
+    ↓
+Slack 알림 / SNS 알림
+```
+
+### 주요 컴포넌트
+
+1. **네트워크 레이어 (VPC Module)**
+   - VPC 및 서브넷 구성
+   - Internet Gateway 및 NAT Gateway
+   - 라우팅 테이블
+
+2. **보안 레이어 (Security Module)**
+   - WAF v2: 웹 공격 차단
+   - Security Groups: 네트워크 액세스 제어
+   - GuardDuty: 위협 탐지
+   - AWS Config: 규정 준수 모니터링
+   - Security Hub: 통합 보안 대시보드
+
+3. **컴퓨팅 레이어 (Compute Module)**
+   - Application Load Balancer (ALB)
+   - CloudFront Distribution
+   - SSL/TLS 인증서 관리
+
+4. **자동화 레이어 (Automation Module)**
+   - EventBridge: 이벤트 기반 트리거
+   - Lambda: IP 차단 자동화 함수
+   - CloudWatch: 로깅 및 모니터링
+
 ## 유지보수 고려사항
 
 1. **모듈화**: 각 컴포넌트를 독립적인 모듈로 분리하여 재사용성 확보
@@ -389,6 +449,48 @@ make bootstrap-apply
 **주의**: 전체 인프라 배포 시 NAT Gateway, ALB, CloudFront 등으로 인해 비용이 발생합니다. 테스트 후 반드시 삭제하세요.
 
 자세한 테스트 가이드는 [environments/prod/bootstrap/TESTING.md](./environments/prod/bootstrap/TESTING.md)를 참조하세요.
+
+## Security & Detection Services
+
+프로젝트에 포함된 Security 및 Detection 서비스들의 상세 정보는 [SECURITY_SERVICES.md](./SECURITY_SERVICES.md)를 참조하세요.
+
+주요 서비스:
+- **WAF v2**: CloudFront에 연결된 웹 애플리케이션 방화벽
+- **Security Groups**: VPC 레벨 네트워크 보안 그룹 (ALB, EC2용)
+- **GuardDuty**: 계정 레벨 위협 탐지 서비스
+- **AWS Config**: 계정 레벨 규정 준수 모니터링
+- **Security Hub**: 통합 보안 대시보드
+
+## CI/CD
+
+### GitHub Actions
+
+프로젝트에는 자동화된 보안 스캔을 위한 GitHub Actions 워크플로우가 포함되어 있습니다.
+
+#### Prowler Security Scan
+
+Terraform 파일 변경 시 자동으로 AWS 보안 스캔을 실행합니다.
+
+**워크플로우 파일**: `.github/workflows/prowler.yml`
+
+**트리거 조건**:
+- Pull Request: `modules/**/*.tf`, `environments/**/*.tf` 변경 시
+- Push to main: 동일 경로 변경 시
+- 수동 실행: `workflow_dispatch` 지원
+
+**필요한 GitHub Secrets**:
+- `AWS_ACCESS_KEY_ID`: AWS Access Key
+- `AWS_SECRET_ACCESS_KEY`: AWS Secret Key
+
+**스캔 결과**:
+- JSON, CSV, HTML 형식의 리포트 생성
+- Artifacts로 자동 업로드 (30일 보관)
+- Critical, High, Medium 심각도 이슈 검사
+
+**설정 방법**:
+1. GitHub 저장소 Settings → Secrets and variables → Actions
+2. `AWS_ACCESS_KEY_ID` 및 `AWS_SECRET_ACCESS_KEY` 추가
+3. 적절한 AWS 권한이 있는 IAM 사용자 사용
 
 ## 라이선스
 

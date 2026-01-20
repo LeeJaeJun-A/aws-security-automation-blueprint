@@ -63,3 +63,7 @@ secrets/
 *.key
 !*.pub
 
+# Prowler reports
+prowler-reports/
+*.prowler
+

@@ -1,0 +1,93 @@
+name: Prowler Security Scan
+
+on:
+  pull_request:
+    paths:
+      - "modules/**/*.tf"
+      - "environments/**/*.tf"
+      - ".github/workflows/prowler.yml"
+      - "scripts/**/*.py"
+  push:
+    branches: [ main ]
+    paths:
+      - "modules/**/*.tf"
+      - "environments/**/*.tf"
+      - ".github/workflows/prowler.yml"
+      - "scripts/**/*.py"
+  workflow_dispatch:  # 수동 실행 가능
+
+env:
+  AWS_REGION: ap-northeast-2
+
+jobs:
+  prowler:
+    runs-on: ubuntu-latest
+    name: AWS Security Scan with Prowler
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # =========================
+      # Install Prowler (v5+)
+      # =========================
+      - name: Install Prowler
+        run: |
+          pip install prowler-cloud --break-system-packages || pip install prowler-cloud
+          prowler --version
+
+      # =========================
+      # Run AWS Security Scan
+      # =========================
+      - name: Run Prowler AWS Scan
+        continue-on-error: true
+        run: |
+          echo "Running Prowler security scan for AWS resources..."
+          prowler aws \
+            --severity critical high medium \
+            --region ${{ env.AWS_REGION }} \
+            --output-format json csv html \
+            --output-directory ./prowler-reports || true
+
+      # =========================
+      # Upload Reports
+      # =========================
+      - name: Upload Prowler reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prowler-security-reports
+          path: prowler-reports/
+          retention-days: 30
+
+      # =========================
+      # Summary
+      # =========================
+      - name: Display scan summary
+        if: always()
+        run: |
+          if [ -f prowler-reports/prowler-report.json ]; then
+            echo "## Prowler Security Scan Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Scan completed. Check artifacts for detailed reports." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Reports available:" >> $GITHUB_STEP_SUMMARY
+            echo "- JSON: prowler-report.json" >> $GITHUB_STEP_SUMMARY
+            echo "- CSV: prowler-report.csv" >> $GITHUB_STEP_SUMMARY
+            echo "- HTML: prowler-report.html" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Prowler Security Scan" >> $GITHUB_STEP_SUMMARY
+            echo "No reports generated. Check logs for errors." >> $GITHUB_STEP_SUMMARY
+          fi

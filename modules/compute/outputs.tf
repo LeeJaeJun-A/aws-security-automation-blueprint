@@ -23,18 +23,34 @@ output "cloudfront_domain_name" {
   value       = try(aws_cloudfront_distribution.main[0].domain_name, null)
 }
 
+output "ec2_instance_ids" {
+  description = "EC2 Instance ID 목록"
+  value       = aws_instance.main[*].id
+}
+
+output "ec2_instance_private_ips" {
+  description = "EC2 Instance Private IP 목록"
+  value       = aws_instance.main[*].private_ip
+}
+
+output "ec2_instance_public_ips" {
+  description = "EC2 Instance Public IP 목록 (null if in private subnet)"
+  value       = aws_instance.main[*].public_ip
+}
+
+# 하위 호환성을 위한 단일 인스턴스 출력값 (첫 번째 인스턴스)
 output "ec2_instance_id" {
-  description = "EC2 Instance ID"
+  description = "EC2 Instance ID (첫 번째 인스턴스, 하위 호환성)"
   value       = try(aws_instance.main[0].id, null)
 }
 
 output "ec2_instance_private_ip" {
-  description = "EC2 Instance Private IP"
+  description = "EC2 Instance Private IP (첫 번째 인스턴스, 하위 호환성)"
   value       = try(aws_instance.main[0].private_ip, null)
 }
 
 output "ec2_instance_public_ip" {
-  description = "EC2 Instance Public IP (null if in private subnet)"
+  description = "EC2 Instance Public IP (첫 번째 인스턴스, 하위 호환성)"
   value       = try(aws_instance.main[0].public_ip, null)
 }
 
